@@ -1,0 +1,1 @@
+Put SDL, zlib, and SDLAnim includes here.
