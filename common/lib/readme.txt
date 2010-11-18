@@ -1,0 +1,1 @@
+Place SDL, zlib, and SDLAnim .lib files in here.
