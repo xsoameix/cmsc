@@ -82,6 +82,7 @@ typedef struct _struct_WZLib_Object{
 	int				blockSize;
 	int				checksum;
 	unsigned int			offset;
+	unsigned int	objectID;
 }WZLib_Object;
 
 char*		WZLib_ObjectType_GetName(WZLib_ObjectType type);
