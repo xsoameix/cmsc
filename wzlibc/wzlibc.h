@@ -74,6 +74,9 @@ typedef enum _enum_ErrorCode{
 	WZLib_Error_Image_Parse_Error1,
 }ErrorCode;
 
+const char* WZLib_GetError();
+char*		WZLib_GetError_copy();
+
 typedef struct _struct_WZLib_Object{
 	struct _struct_WZLib_Object*	parent;
 	char*				name;
@@ -83,6 +86,7 @@ typedef struct _struct_WZLib_Object{
 	int				checksum;
 	unsigned int			offset;
 	unsigned int	objectID;
+	unsigned int	refCount;
 }WZLib_Object;
 
 char*		WZLib_ObjectType_GetName(WZLib_ObjectType type);
