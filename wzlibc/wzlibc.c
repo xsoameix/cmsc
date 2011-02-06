@@ -138,6 +138,68 @@ void _tokenize(const char* str,const char* delim,char*** outTokens,int* numToken
 	*outTokens=tokens;
 	*numTokens=tokenIndex;
 }
+int _z_decompress_unknown(unsigned char* inBuffer,int inLen,unsigned char** outBufferPtr,int* outLen){
+	const int inChunk=1024;
+	const int outChunk=1024;
+	const int guessSize=500000; /*allocate in chunks of this size*/
+	unsigned char* outData=(unsigned char*)malloc(sizeof(unsigned char)*outChunk);
+	unsigned char* outBuffer=(unsigned char*)malloc(sizeof(unsigned char)*guessSize);
+	int outBufferIndex=0;
+	int outBufferSize=guessSize;
+	int inBufferIndex=0;
+	int outDataLen=0;
+	int err=Z_OK;
+	z_stream strm;
+	{
+		strm.next_in=NULL;
+		strm.avail_in=0;
+		strm.opaque=NULL;
+		strm.zfree=Z_NULL;
+		strm.zalloc=Z_NULL;
+		inflateInit(&strm);
+		
+		do{
+			strm.next_in=inBuffer+sizeof(unsigned char)*inBufferIndex;
+			strm.avail_in=(inLen-inBufferIndex > inChunk)?inChunk:inLen-inBufferIndex;
+			if(strm.avail_in==0)
+				break;
+			inBufferIndex+=strm.avail_in;
+			do{
+				int have;
+				if(strm.avail_in==0)
+					break;
+				strm.avail_out=outChunk;
+				strm.next_out=outData;
+				err=inflate(&strm,Z_NO_FLUSH);
+				switch(err){
+					case Z_NEED_DICT:
+					case Z_DATA_ERROR:
+					case Z_MEM_ERROR:
+					case Z_BUF_ERROR:
+						free(outData);
+						inflateEnd(&strm);
+						return err;
+				}
+				have=outChunk-strm.avail_out;
+				if(outBufferIndex+have > outBufferSize){ /*need to make it bigger pl0x*/
+					outBuffer=(unsigned char*)realloc(outBuffer,sizeof(unsigned char*)*(outBufferSize+guessSize));
+					outBufferSize+=guessSize;
+				}
+				memcpy((void*)(outBuffer+(sizeof(unsigned char)*outBufferIndex)),(void*)outData,have);
+				outBufferIndex+=have;
+			}while(strm.avail_out==0);
+		}while(err!=Z_STREAM_END);
+		
+		inflateEnd(&strm);
+	}
+	*outLen=strm.total_out;
+	*outBufferPtr=outBuffer;
+	if(strm.total_out<outBufferSize){ /*make smaller*/
+		outBuffer=(unsigned char*)realloc(outBuffer,sizeof(unsigned char)*strm.total_out);
+	}
+	free(outData);
+	return Z_OK;
+}
 int _z_decompress_known(unsigned char* inBuffer,int inLen,unsigned char** outBufferPtr,int outLen){
 	const int inChunk=4096;
 	int inBufferIndex=0;
@@ -512,6 +574,7 @@ ErrorCode	WZLib_Image_Parse(WZLib_Image* image){
 		return WZLib_Error_Image_Parse_Error1;
 	image->_sub->_firstChild=NULL;
 	image->_sub->inh.parentImg=image;
+	WZLIB_OBJECT(image->_sub)->parent=image;
 	ret=_WZLib_SubProperty_Parse(image->_sub,image->_stream,image->inh.offset);
 	fseek(image->_stream,originalPos,SEEK_SET);
 	if(ret==WZLib_Error_NoError)
@@ -565,6 +628,9 @@ WZLib_Property* WZLib_Property_Copy(WZLib_Property* prop){
 		case WZLib_Prop_UOL:
 		case WZLib_Prop_UnsignedShort:
 			ret=malloc(sizeof(WZLib_PrimitiveProperty));
+			break;
+		case WZLib_Prop_PNG:
+			printf("holy fin ballz\n");
 			break;
 	}
 	/*primitive, sub, png, mp3 */
@@ -667,6 +733,7 @@ int _WZLib_PNGProperty_Init(WZLib_PNGProperty* png,const char* name){
 		return ret;
 	return 0;
 }
+int wtf=0;
 void WZLib_PNGProperty_Unparse(WZLib_PNGProperty* png){
 	if(png==NULL)
 		return;
@@ -675,6 +742,9 @@ void WZLib_PNGProperty_Unparse(WZLib_PNGProperty* png){
 #	ifdef WZLIB_HAVE_SDL
 	SDL_FreeSurface(png->png);
 #	endif
+	printf("WTF: 0x%08x %d\n",png->_compBytes,++wtf);
+	if(WZLIB_OBJECT(png)->objectID==2144)
+		wtf=wtf;
 	if(png->_compBytes!=NULL)
 		free(png->_compBytes);
 	if(png->_decBytes!=NULL)
@@ -707,7 +777,7 @@ ErrorCode WZLib_PNGProperty_Parse(WZLib_PNGProperty* png){
 			break;
 	}
 	if(png->_compBytes[0]==0x78 && png->_compBytes[1]==0x9c)
-		_z_decompress_known(png->_compBytes,png->_length,&decBuf,decLen);
+		_z_decompress_unknown(png->_compBytes,png->_length,&decBuf,&decLen);
 	else{
 		int blocksize=0;
 		int eop=png->_length;
@@ -729,12 +799,13 @@ ErrorCode WZLib_PNGProperty_Parse(WZLib_PNGProperty* png){
 				tempCBLoc++;
 			}
 		}
-		_z_decompress_known(tempCB,tempCBLoc++,&decBuf,decLen);
+		_z_decompress_unknown(tempCB,tempCBLoc++,&decBuf,&decLen);
 		free(tempCB);
 	}
 #	ifdef WZLIB_HAVE_SDL
 	{
 		int f=png->_format+png->_format2;
+		printf("parsing format %d\n",f);
 		switch(f){
 			case 1:
 				{
@@ -872,6 +943,7 @@ WZLib_PNGProperty* _WZLib_PNGProperty_Copy(WZLib_PNGProperty* pngProp){
 		SDL_FreeSurface(temp);
 	}
 #	endif
+	WZLIB_OBJECT(ret)->objectID=__WZLIB_OBJECT_ID_COUNTER;__WZLIB_OBJECT_ID_COUNTER++;
 	return ret;
 }
 #pragma endregion
@@ -1125,6 +1197,8 @@ WZLib_Property* _WZLib_ExtendedProperty_Parse(FILE* stream,const char* name,int 
 		}
 		((WZLib_CanvasProperty*)ret)->png=malloc(sizeof(WZLib_PNGProperty));
 		_WZLib_PNGProperty_Init(WZLIB_CANVASPROPERTY(ret)->png,name);
+		if(WZLIB_OBJECT(WZLIB_CANVASPROPERTY(ret)->png)->objectID==481)
+			ret=ret;
 		_WZLib_PNGProperty_Read(((WZLib_CanvasProperty*)ret)->png,stream);
 	}
 	if(strcmp(iname,"Shape2D#Vector2D")==0){
