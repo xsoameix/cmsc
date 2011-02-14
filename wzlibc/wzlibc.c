@@ -91,6 +91,12 @@ unsigned int				_WZLib_File_GetVersionHash		(int encver,int realver);
 #pragma endregion
 
 #pragma region Utilities
+void* _zalloc(size_t size){
+	void* ret=malloc(size);
+	memset(ret,0,size);
+	return ret;
+}
+#define malloc(size) _zalloc(size)
 void _tokenize(const char* str,const char* delim,char*** outTokens,int* numTokens){
 	const int guessSize=2;
 	char** tokens=(char**)malloc(sizeof(char*)*guessSize);
@@ -280,8 +286,11 @@ char* F_Read_EncryptedString(FILE* stream){
 	char smallLength=0;
 	char* ret=NULL;
 	F_Read_Primitive(stream,signed char,smallLength);
-	if(smallLength==0)
-		return "";
+	if(smallLength==0){
+		ret=malloc(sizeof(char)*1);
+		ret[0]='\0';
+		return ret;
+	}
 	if(smallLength>0){
 		unsigned short mask=0xAAAA;
 		unsigned int length=0;
@@ -290,8 +299,11 @@ char* F_Read_EncryptedString(FILE* stream){
 			F_Read_Primitive(stream,signed int,length);
 		else
 			length=smallLength;
-		if(length<=0)
-			return "";
+		if(length<=0){
+			ret=malloc(sizeof(char)*1);
+			ret[0]='\0';
+			return ret;
+		}
 		ret=(char*)malloc(sizeof(char)*length+1); /*1 extra for null//*/
 		for(i=0;i<length;i++){
 			unsigned int encChar;
@@ -448,7 +460,6 @@ char*		WZLib_ObjectType_GetName(WZLib_ObjectType type){
 #pragma region WZLib_Object and Generics
 
 int	_WZLib_Object_Init(WZLib_Object* obj,const char* name,WZLib_ObjectType type){
-	memset(obj,'\0',sizeof(WZLib_Object));
 	obj->name=(char*)malloc(sizeof(char)*(strlen(name)+1));
 	memcpy(obj->name,name,strlen(name)+1);
 	obj->type=type;
@@ -598,7 +609,6 @@ void WZLib_Image_ResolveUOLs(WZLib_Image* image){
 #pragma region WZLib_Property
 int _WZLib_Property_Init(WZLib_Property* prop,const char* name,WZLib_PropertyType propType){
 	int ret=0;
-	memset(prop,0,sizeof(WZLib_Property));
 	if((ret=_WZLib_Object_Init(&(prop->inh),name,WZLib_ObjectType_Property))!=0)
 		return ret;
 	prop->propType=propType;
@@ -607,7 +617,7 @@ int _WZLib_Property_Init(WZLib_Property* prop,const char* name,WZLib_PropertyTyp
 WZLib_Property* WZLib_Property_Copy(WZLib_Property* prop){
 	WZLib_Property* ret=NULL;
 	char* name=WZLIB_OBJECT(prop)->name;
-	switch(prop->propType){
+	/*switch(prop->propType){
 		case WZLib_Prop_Canvas:
 			ret=malloc(sizeof(WZLib_CanvasProperty));
 			break;
@@ -632,14 +642,14 @@ WZLib_Property* WZLib_Property_Copy(WZLib_Property* prop){
 		case WZLib_Prop_PNG:
 			printf("holy fin ballz\n");
 			break;
-	}
+	}//*/
 	/*primitive, sub, png, mp3 */
 	switch(((WZLib_PropertyType)(((int)(WZLIB_PROPERTY(prop)->propType))/100*100))){
 	case WZLib_Prop_Primitive:
 		ret=malloc(sizeof(WZLib_PrimitiveProperty));
+		memcpy(WZPP(ret),WZPP(prop),sizeof(WZLib_PrimitiveProperty));
 		_WZLib_PrimitiveProperty_Init(ret,name,prop->propType);
 		/*ret=WZLIB_PROPERTY(_WZLib_PrimitiveProperty_New(ret,WZLIB_OBJECT(prop)->name,prop->propType));*/
-		memcpy(WZPP(ret),WZPP(prop),sizeof(WZLib_PrimitiveProperty));
 		switch(prop->propType){
 		case WZLib_Prop_String:
 		case WZLib_Prop_UOL:
@@ -664,13 +674,8 @@ WZLib_Property* WZLib_Property_Copy(WZLib_Property* prop){
 		/*ret=WZLIB_PROPERTY(_WZLib_SoundProperty_New(ret,WZLIB_OBJECT(prop)->name));*/
 		break;
 	}
-	/* after that's all done, copy name */
-	if(ret!=NULL && 1==0){
-		WZLIB_OBJECT(ret)->name=(char*)malloc(sizeof(char)*100);
-		memcpy(WZLIB_OBJECT(ret)->name,WZLIB_OBJECT(prop)->name,strlen(WZLIB_OBJECT(prop)->name));
-	}
 	/*give it a new ID*/
-	WZLIB_OBJECT(ret)->objectID=__WZLIB_OBJECT_ID_COUNTER;__WZLIB_OBJECT_ID_COUNTER++;
+	//WZLIB_OBJECT(ret)->objectID=__WZLIB_OBJECT_ID_COUNTER;__WZLIB_OBJECT_ID_COUNTER++;
 	return ret;
 }
 #pragma endregion
@@ -678,7 +683,6 @@ WZLib_Property* WZLib_Property_Copy(WZLib_Property* prop){
 #pragma region WZLib_PrimitiveProperty
 int _WZLib_PrimitiveProperty_Init(WZLib_PrimitiveProperty* prop,const char* name,WZLib_PropertyType propType){
 	int ret=0;
-	memset(prop,0,sizeof(WZLib_PrimitiveProperty));
 	if((ret=_WZLib_Property_Init(&(prop->inh),name,propType))!=0)
 		return ret;
 	return 0;
@@ -728,12 +732,10 @@ WZLib_Property* WZLib_UOLProperty_Resolve(WZLib_PrimitiveProperty* uolProp){
 #pragma region WZLib_PNGProperty
 int _WZLib_PNGProperty_Init(WZLib_PNGProperty* png,const char* name){
 	int ret=0;
-	memset(png,0,sizeof(WZLib_PNGProperty));
 	if((ret=_WZLib_Property_Init(png,name,WZLib_Prop_PNG))!=0)
 		return ret;
 	return 0;
 }
-int wtf=0;
 void WZLib_PNGProperty_Unparse(WZLib_PNGProperty* png){
 	if(png==NULL)
 		return;
@@ -742,9 +744,6 @@ void WZLib_PNGProperty_Unparse(WZLib_PNGProperty* png){
 #	ifdef WZLIB_HAVE_SDL
 	SDL_FreeSurface(png->png);
 #	endif
-	printf("WTF: 0x%08x %d\n",png->_compBytes,++wtf);
-	if(WZLIB_OBJECT(png)->objectID==2144)
-		wtf=wtf;
 	if(png->_compBytes!=NULL)
 		free(png->_compBytes);
 	if(png->_decBytes!=NULL)
@@ -805,7 +804,6 @@ ErrorCode WZLib_PNGProperty_Parse(WZLib_PNGProperty* png){
 #	ifdef WZLIB_HAVE_SDL
 	{
 		int f=png->_format+png->_format2;
-		printf("parsing format %d\n",f);
 		switch(f){
 			case 1:
 				{
@@ -921,9 +919,9 @@ ErrorCode _WZLib_PNGProperty_Read(WZLib_PNGProperty* png,FILE* stream){
 WZLib_PNGProperty* _WZLib_PNGProperty_Copy(WZLib_PNGProperty* pngProp){
 	WZLib_PNGProperty* ret=malloc(sizeof(WZLib_PNGProperty));
 	char* name=WZLIB_OBJECT(pngProp)->name;
+	memcpy(ret,pngProp,sizeof(WZLib_PNGProperty));
 	_WZLib_PNGProperty_Init(ret,name);
 	/*ret=_WZLib_PNGProperty_New(ret,WZLIB_OBJECT(pngProp)->name);*/
-	memcpy(ret,pngProp,sizeof(WZLib_PNGProperty));
 	if(pngProp->_compBytes!=NULL){
 		ret->_compBytes=(unsigned char*)malloc(sizeof(unsigned char)*ret->_length);
 		memcpy(ret->_compBytes,pngProp->_compBytes,ret->_length);
@@ -943,7 +941,7 @@ WZLib_PNGProperty* _WZLib_PNGProperty_Copy(WZLib_PNGProperty* pngProp){
 		SDL_FreeSurface(temp);
 	}
 #	endif
-	WZLIB_OBJECT(ret)->objectID=__WZLIB_OBJECT_ID_COUNTER;__WZLIB_OBJECT_ID_COUNTER++;
+	//WZLIB_OBJECT(ret)->objectID=__WZLIB_OBJECT_ID_COUNTER;__WZLIB_OBJECT_ID_COUNTER++;
 	return ret;
 }
 #pragma endregion
@@ -951,7 +949,6 @@ WZLib_PNGProperty* _WZLib_PNGProperty_Copy(WZLib_PNGProperty* pngProp){
 #pragma region WZLib_CanvasProperty
 int _WZLib_CanvasProperty_Init(WZLib_CanvasProperty* canvas,const char* name){
 	int ret=0;
-	memset(canvas,0,sizeof(WZLib_CanvasProperty));
 	if((ret=_WZLib_SubProperty_Init(canvas,name))!=0)
 		return ret;
 	WZLIB_PROPERTY(canvas)->propType=WZLib_Prop_Canvas;
@@ -962,7 +959,6 @@ int _WZLib_CanvasProperty_Init(WZLib_CanvasProperty* canvas,const char* name){
 #pragma region WZLib_SubProperty
 int _WZLib_SubProperty_Init(WZLib_SubProperty* sub,const char* name){
 	int ret=0;
-	memset(sub,0,sizeof(WZLib_SubProperty));
 	if((ret=_WZLib_Property_Init(sub,name,WZLib_Prop_Sub))!=0)
 		return ret;
 	return 0;
@@ -1015,8 +1011,6 @@ void _WZLib_SubProperty_Free(WZLib_SubProperty* sub){
 		if(prop->propType==WZLib_Prop_String || prop->propType==WZLib_Prop_UOL)
 			free(WZLIB_PRIMITIVEPROPERTY(prop)->val.strVal);
 		free(WZLIB_OBJECT(prop)->name);
-		if(*(int*)(cur-sizeof(unsigned int))==1004)
-			cur=cur;
 		/* now just kill it */
 		free(cur->prev);
 		if(cur->next==NULL){
@@ -1106,6 +1100,8 @@ ErrorCode _WZLib_SubProperty_Parse(WZLib_SubProperty* sub,FILE* stream,unsigned 
 				break;
 		}
 		prop->parentImg=((WZLib_Property*)sub)->parentImg;
+		if(prop->propType==WZLib_Prop_Canvas)
+			WZLIB_OBJECT(WZLIB_CANVASPROPERTY(prop)->png)->parent=prop;
 		WZLIB_OBJECT(prop)->parent=sub;
 		_WZLib_SubProperty_Add(sub,prop);
 		free(name);
@@ -1125,6 +1121,8 @@ void WZLib_SubProperty_ResolveUOLs(WZLib_SubProperty* subProp){
 				cur->data=(void*)newProp; /*replace w/ ref to other prop*/
 				/*reparent*/
 				((WZLib_Object*)newProp)->parent=(WZLib_Object*)subProp;
+				free(WZLIB_OBJECT(prop)->name);
+				WZLIB_OBJECT(prop)->name=(char*)malloc(sizeof(char)*strlen(WZLIB_OBJECT(newProp)->name)+1);
 				strcpy(WZLIB_OBJECT(newProp)->name,WZLIB_OBJECT(prop)->name);
 				free(prop); /*kill old UOL*/
 			}
@@ -1138,13 +1136,13 @@ WZLib_SubProperty* _WZLib_SubProperty_Copy(WZLib_SubProperty* subProp){
 	switch(subProp->inh.propType){
 		case WZLib_Prop_Sub:
 			ret=malloc(sizeof(WZLib_SubProperty));
-			_WZLib_SubProperty_Init(ret,WZLIB_OBJECT(subProp)->name);
 			memcpy(ret,subProp,sizeof(WZLib_SubProperty));
+			_WZLib_SubProperty_Init(ret,WZLIB_OBJECT(subProp)->name);
 			break;
 		case WZLib_Prop_Canvas:
 			ret=malloc(sizeof(WZLib_CanvasProperty));
-			_WZLib_CanvasProperty_Init(ret,WZLIB_OBJECT(subProp)->name);
 			memcpy(ret,subProp,sizeof(WZLib_CanvasProperty));
+			_WZLib_CanvasProperty_Init(ret,WZLIB_OBJECT(subProp)->name);
 			break;
 	}
 	ret->_firstChild=NULL;
@@ -1197,8 +1195,6 @@ WZLib_Property* _WZLib_ExtendedProperty_Parse(FILE* stream,const char* name,int 
 		}
 		((WZLib_CanvasProperty*)ret)->png=malloc(sizeof(WZLib_PNGProperty));
 		_WZLib_PNGProperty_Init(WZLIB_CANVASPROPERTY(ret)->png,name);
-		if(WZLIB_OBJECT(WZLIB_CANVASPROPERTY(ret)->png)->objectID==481)
-			ret=ret;
 		_WZLib_PNGProperty_Read(((WZLib_CanvasProperty*)ret)->png,stream);
 	}
 	if(strcmp(iname,"Shape2D#Vector2D")==0){
@@ -1368,7 +1364,6 @@ int WZLib_File_GetSize(WZLib_File* file){
 #pragma region WZLib_SoundProperty
 int _WZLib_SoundProperty_Init(WZLib_SoundProperty* prop,const char* name){
 	int ret=0;
-	memset(prop,0,sizeof(WZLib_SoundProperty));
 	if((ret=_WZLib_Property_Init(prop,name,WZLib_Prop_MP3))!=0)
 		return ret;
 	return 0;
