@@ -379,7 +379,8 @@ char* F_Read_StringBlock(FILE* stream,long offset){
 			fseek(stream,currentOffset,SEEK_SET);
 			break;
 		default:
-			ret="";
+			ret=malloc(sizeof(char));
+			ret[0]='\0';
 			break;
 	}
 	return ret;
@@ -564,7 +565,7 @@ void WZLib_Image_Unparse(WZLib_Image* image){
 ErrorCode	WZLib_Image_Parse(WZLib_Image* image){
 	ErrorCode ret=WZLib_Error_NoError;
 	long originalPos;
-	unsigned char b;
+	unsigned char b=0;
 	char* str;
 	unsigned short c;
 	if(image->inh.parsed)
@@ -617,42 +618,17 @@ int _WZLib_Property_Init(WZLib_Property* prop,const char* name,WZLib_PropertyTyp
 WZLib_Property* WZLib_Property_Copy(WZLib_Property* prop){
 	WZLib_Property* ret=NULL;
 	char* name=WZLIB_OBJECT(prop)->name;
-	/*switch(prop->propType){
-		case WZLib_Prop_Canvas:
-			ret=malloc(sizeof(WZLib_CanvasProperty));
-			break;
-		case WZLib_Prop_Convex:
-		case WZLib_Prop_Sub:
-			ret=malloc(sizeof(WZLib_SubProperty));
-			break;
-		case WZLib_Prop_MP3:
-			ret=malloc(sizeof(WZLib_SoundProperty));
-			break;
-		case WZLib_Prop_CompressedInt:
-		case WZLib_Prop_Double:
-		case WZLib_Prop_Float:
-		case WZLib_Prop_Vector:
-		case WZLib_Prop_Null:
-		case WZLib_Prop_Primitive:
-		case WZLib_Prop_String:
-		case WZLib_Prop_UOL:
-		case WZLib_Prop_UnsignedShort:
-			ret=malloc(sizeof(WZLib_PrimitiveProperty));
-			break;
-		case WZLib_Prop_PNG:
-			printf("holy fin ballz\n");
-			break;
-	}//*/
 	/*primitive, sub, png, mp3 */
 	switch(((WZLib_PropertyType)(((int)(WZLIB_PROPERTY(prop)->propType))/100*100))){
 	case WZLib_Prop_Primitive:
 		ret=malloc(sizeof(WZLib_PrimitiveProperty));
 		memcpy(WZPP(ret),WZPP(prop),sizeof(WZLib_PrimitiveProperty));
 		_WZLib_PrimitiveProperty_Init(ret,name,prop->propType);
-		/*ret=WZLIB_PROPERTY(_WZLib_PrimitiveProperty_New(ret,WZLIB_OBJECT(prop)->name,prop->propType));*/
 		switch(prop->propType){
 		case WZLib_Prop_String:
 		case WZLib_Prop_UOL:
+			/*alloc*/
+			WZPP(ret)->val.strVal=malloc(sizeof(char)*(strlen(WZPP(prop)->val.strVal)+1));
 			memcpy(WZPP(ret)->val.strVal,WZPP(prop)->val.strVal,strlen(WZPP(prop)->val.strVal));
 			break;
 		case WZLib_Prop_Vector:
@@ -671,11 +647,8 @@ WZLib_Property* WZLib_Property_Copy(WZLib_Property* prop){
 	case WZLib_Prop_MP3:
 		ret=malloc(sizeof(WZLib_SoundProperty));
 		_WZLib_SoundProperty_Init(ret,name);
-		/*ret=WZLIB_PROPERTY(_WZLib_SoundProperty_New(ret,WZLIB_OBJECT(prop)->name));*/
 		break;
 	}
-	/*give it a new ID*/
-	//WZLIB_OBJECT(ret)->objectID=__WZLIB_OBJECT_ID_COUNTER;__WZLIB_OBJECT_ID_COUNTER++;
 	return ret;
 }
 #pragma endregion
@@ -921,7 +894,6 @@ WZLib_PNGProperty* _WZLib_PNGProperty_Copy(WZLib_PNGProperty* pngProp){
 	char* name=WZLIB_OBJECT(pngProp)->name;
 	memcpy(ret,pngProp,sizeof(WZLib_PNGProperty));
 	_WZLib_PNGProperty_Init(ret,name);
-	/*ret=_WZLib_PNGProperty_New(ret,WZLIB_OBJECT(pngProp)->name);*/
 	if(pngProp->_compBytes!=NULL){
 		ret->_compBytes=(unsigned char*)malloc(sizeof(unsigned char)*ret->_length);
 		memcpy(ret->_compBytes,pngProp->_compBytes,ret->_length);
@@ -1029,7 +1001,7 @@ ErrorCode _WZLib_SubProperty_Parse(WZLib_SubProperty* sub,FILE* stream,unsigned 
 	int i=0;
 	for(i=0;i<entryCount;i++){
 		char* name;
-		unsigned char b;
+		unsigned char b=0;
 		WZLib_Property* prop=NULL;
 		name=F_Read_StringBlock(stream,offset);
 		F_Read_Primitive(stream,unsigned char,b);
@@ -1038,7 +1010,6 @@ ErrorCode _WZLib_SubProperty_Parse(WZLib_SubProperty* sub,FILE* stream,unsigned 
 				{
 					prop=malloc(sizeof(WZLib_PrimitiveProperty));
 					_WZLib_PrimitiveProperty_Init(prop,name,WZLib_Prop_Null);
-					/*prop=_WZLib_PrimitiveProperty_New(prop,name,WZLib_Prop_Null);*/
 				}
 				break;
 			case 0x0B:
@@ -1046,15 +1017,13 @@ ErrorCode _WZLib_SubProperty_Parse(WZLib_SubProperty* sub,FILE* stream,unsigned 
 				{
 					prop=malloc(sizeof(WZLib_PrimitiveProperty));
 					_WZLib_PrimitiveProperty_Init(prop,name,WZLib_Prop_UnsignedShort);
-					/*prop=_WZLib_PrimitiveProperty_New(prop,name,WZLib_Prop_UnsignedShort);*/
-					F_Read_Primitive(stream,unsigned int,WZPP(prop)->val.intVal);
+					F_Read_Primitive(stream,unsigned short,WZPP(prop)->val.intVal);
 				}
 				break;
 			case 0x03:
 				{
 					prop=malloc(sizeof(WZLib_PrimitiveProperty));
 					_WZLib_PrimitiveProperty_Init(prop,name,WZLib_Prop_CompressedInt);
-					/*prop=_WZLib_PrimitiveProperty_New(prop,name,WZLib_Prop_CompressedInt);*/
 					WZPP(prop)->val.intVal=F_Read_CompressedInt(stream);
 				}
 				break;
@@ -1064,7 +1033,6 @@ ErrorCode _WZLib_SubProperty_Parse(WZLib_SubProperty* sub,FILE* stream,unsigned 
 					F_Read_Primitive(stream,unsigned char,type);
 					prop=malloc(sizeof(WZLib_PrimitiveProperty));
 					_WZLib_PrimitiveProperty_Init(prop,name,WZLib_Prop_Float);
-					/*prop=_WZLib_PrimitiveProperty_New(prop,name,WZLib_Prop_Float);*/
 					if(type==0x80)
 						F_Read_Primitive(stream,float,WZPP(prop)->val.dblVal);
 					else
@@ -1075,7 +1043,6 @@ ErrorCode _WZLib_SubProperty_Parse(WZLib_SubProperty* sub,FILE* stream,unsigned 
 				{
 					prop=malloc(sizeof(WZLib_PrimitiveProperty));
 					_WZLib_PrimitiveProperty_Init(prop,name,WZLib_Prop_Double);
-					/*prop=_WZLib_PrimitiveProperty_New(prop,name,WZLib_Prop_Double);*/
 					F_Read_Primitive(stream,double,WZPP(prop)->val.dblVal);
 				}
 				break;
@@ -1083,7 +1050,6 @@ ErrorCode _WZLib_SubProperty_Parse(WZLib_SubProperty* sub,FILE* stream,unsigned 
 				{
 					prop=malloc(sizeof(WZLib_PrimitiveProperty));
 					_WZLib_PrimitiveProperty_Init(prop,name,WZLib_Prop_String);
-					/*prop=_WZLib_PrimitiveProperty_New(prop,name,WZLib_Prop_String);*/
 					WZPP(prop)->val.strVal=F_Read_StringBlock(stream,offset);
 				}
 				break;
@@ -1099,11 +1065,13 @@ ErrorCode _WZLib_SubProperty_Parse(WZLib_SubProperty* sub,FILE* stream,unsigned 
 				}
 				break;
 		}
-		prop->parentImg=((WZLib_Property*)sub)->parentImg;
-		if(prop->propType==WZLib_Prop_Canvas)
-			WZLIB_OBJECT(WZLIB_CANVASPROPERTY(prop)->png)->parent=prop;
-		WZLIB_OBJECT(prop)->parent=sub;
-		_WZLib_SubProperty_Add(sub,prop);
+		if(prop!=NULL){
+			prop->parentImg=((WZLib_Property*)sub)->parentImg;
+			if(prop->propType==WZLib_Prop_Canvas)
+				WZLIB_OBJECT(WZLIB_CANVASPROPERTY(prop)->png)->parent=prop;
+			WZLIB_OBJECT(prop)->parent=sub;
+			_WZLib_SubProperty_Add(sub,prop);
+		}
 		free(name);
 	}
 	return ret;
@@ -1131,7 +1099,7 @@ void WZLib_SubProperty_ResolveUOLs(WZLib_SubProperty* subProp){
 	}
 }
 WZLib_SubProperty* _WZLib_SubProperty_Copy(WZLib_SubProperty* subProp){
-	WZLib_SubProperty* ret=NULL;/*_WZLib_SubProperty_New(WZLIB_OBJECT(subProp)->name);*/
+	WZLib_SubProperty* ret=NULL;
 	_LL_Entry* cur=subProp->_firstChild;
 	switch(subProp->inh.propType){
 		case WZLib_Prop_Sub:
@@ -1177,7 +1145,6 @@ WZLib_Property* _WZLib_ExtendedProperty_Parse(FILE* stream,const char* name,int 
 	if(strcmp(iname,"Property")==0){
 		ret=malloc(sizeof(WZLib_SubProperty));
 		_WZLib_SubProperty_Init(ret,name);
-		/*ret=_WZLib_SubProperty_New(ret,name);*/
 		WZLIB_PROPERTY(ret)->parentImg=parentImg;
 		fseek(stream,2,SEEK_CUR);
 		_WZLib_SubProperty_Parse((WZLib_SubProperty*)ret,stream,offset);
@@ -1186,7 +1153,6 @@ WZLib_Property* _WZLib_ExtendedProperty_Parse(FILE* stream,const char* name,int 
 		unsigned char b;
 		ret=malloc(sizeof(WZLib_CanvasProperty));
 		_WZLib_CanvasProperty_Init(ret,name);
-		/*ret=_WZLib_CanvasProperty_New(ret,name);*/
 		fseek(stream,1,SEEK_CUR);
 		F_Read_Primitive(stream,unsigned char,b);
 		if(b==1){
@@ -1200,7 +1166,6 @@ WZLib_Property* _WZLib_ExtendedProperty_Parse(FILE* stream,const char* name,int 
 	if(strcmp(iname,"Shape2D#Vector2D")==0){
 		ret=malloc(sizeof(WZLib_PrimitiveProperty));
 		_WZLib_PrimitiveProperty_Init(ret,name,WZLib_Prop_Vector);
-		/*ret=_WZLib_PrimitiveProperty_New(ret,name,WZLib_Prop_Vector);*/
 		WZPP(ret)->val.vecVal[0]=F_Read_CompressedInt(stream);
 		WZPP(ret)->val.vecVal[1]=F_Read_CompressedInt(stream);
 	}
@@ -1209,7 +1174,6 @@ WZLib_Property* _WZLib_ExtendedProperty_Parse(FILE* stream,const char* name,int 
 		int i=0;
 		ret=malloc(sizeof(WZLib_SubProperty));
 		_WZLib_SubProperty_Init(ret,name);
-		/*ret=_WZLib_SubProperty_New(ret,name);*/
 		WZLIB_PROPERTY(ret)->parentImg=parentImg;
 		for(i=0;i<ec;i++){
 			WZLib_Property* nP=_WZLib_ExtendedProperty_Parse(stream,name,offset,eob,parentImg);
@@ -1220,7 +1184,6 @@ WZLib_Property* _WZLib_ExtendedProperty_Parse(FILE* stream,const char* name,int 
 	if(strcmp(iname,"Sound_DX8")==0){
 		ret=malloc(sizeof(WZLib_SoundProperty));
 		_WZLib_SoundProperty_Init(ret,name);
-		/*ret=_WZLib_SoundProperty_New(ret,name);*/
 		_WZLib_SoundProperty_Parse((WZLib_SoundProperty*)ret,stream);
 	}
 	if(strcmp(iname,"UOL")==0){
@@ -1228,7 +1191,6 @@ WZLib_Property* _WZLib_ExtendedProperty_Parse(FILE* stream,const char* name,int 
 		unsigned int offInc;
 		ret=malloc(sizeof(WZLib_PrimitiveProperty));
 		_WZLib_PrimitiveProperty_Init(ret,name,WZLib_Prop_UOL);
-		/*ret=_WZLib_PrimitiveProperty_New(ret,name,WZLib_Prop_UOL);*/
 		fseek(stream,1,SEEK_CUR);
 		F_Read_Primitive(stream,unsigned char,b);
 		switch(b){
@@ -1286,7 +1248,6 @@ WZLib_File*	WZLib_File_Open(const char* name){
 	memset(ret,0,sizeof(WZLib_File));
 	ret->_fileVersion=-1;
 	_WZLib_Object_Init(ret,name,WZLib_ObjectType_File);
-	/*ret->inh=*_WZLib_Object_New(&(ret->inh),name,WZLib_ObjectType_File);*/
 	ret->_fileName=(char*)malloc(sizeof(char)*(strlen(name)+1));
 	memcpy(ret->_fileName,name,strlen(name)+1);
 	/*test to see if name is valid*/
@@ -1298,7 +1259,6 @@ WZLib_File*	WZLib_File_Open(const char* name){
 	fclose(testf);
 	ret->_header=malloc(sizeof(WZLib_Header));
 	_WZLib_Header_Init(ret->_header,name);
-	/*ret->_header=_WZLib_Header_New(name);*/
 	ret->_header->inh.parent=ret;
 	return ret;
 }
@@ -1327,27 +1287,29 @@ ErrorCode		WZLib_File_Parse(WZLib_File* file){
 	unsigned short dump;
 	file->_wzDir=malloc(sizeof(WZLib_Directory));
 	_WZLib_Directory_Init(file->_wzDir,file->_fileName);
-	/*file->_wzDir=_WZLib_Directory_New(file->_fileName);*/
 	file->_wzDir->parentFile=file;
 	file->_stream=fopen(file->_fileName,"rb");
 	if(file->_stream==NULL)
 		return WZLib_Error_File_Parse_BadFileName;
 	/*now parse header*/
 	_WZLib_Header_Parse(file->_header,file->_stream);
-	F_Read_Primitive(file->_stream,unsigned short,dump);
+	fseek(file->_stream,file->_header->fileStart,SEEK_SET);
+	F_Read_Primitive(file->_stream,short,dump);
 	/*now determine version*/
 	if(file->_fileVersion==-1){
 		int j=1;
 		for(j=1;j<0x7F;j++){
+			unsigned int vh;
 			file->_fileVersion=j;
-			file->_header->versionHash=_WZLib_File_GetVersionHash(file->_header->version,file->_fileVersion);
-			if(file->_header->versionHash!=0)
-				break;
+			vh=_WZLib_File_GetVersionHash(file->_header->version,file->_fileVersion);
+			if(vh!=0)
+				file->_header->versionHash=vh; /*assume the last collision is the valid one*/
 		}
 	}
 	ret=_WZLib_Directory_Parse(file->_wzDir,file->_stream,file->_header);
 	if(ret==WZLib_Error_NoError)
 		file->inh.parsed=1;
+	file->inh.parsed=1;
 	return ret;
 }
 WZLib_Object* WZLib_File_Get_n(WZLib_File* file,const char* name){
@@ -1441,7 +1403,14 @@ ErrorCode		_WZLib_Directory_Parse(WZLib_Directory* dir,FILE* stream,WZLib_Header
 		int checksum;
 		unsigned int offset;
 		F_Read_Primitive(stream,unsigned char,type);
-		if(type==2){
+		if(type==1){
+			int unknown;
+			F_Read_Primitive(stream,int,unknown);
+			F_Read_Primitive(stream,short,unknown);
+			F_Read_Offset(stream,header);
+			continue;
+		}
+		else if(type==2){
 			int stringOffset;
 			long pos;
 			F_Read_Primitive(stream,int,stringOffset);
@@ -1452,8 +1421,9 @@ ErrorCode		_WZLib_Directory_Parse(WZLib_Directory* dir,FILE* stream,WZLib_Header
 			fseek(stream,pos,SEEK_SET);
 		}else if(type==3 || type==4)
 			name=F_Read_EncryptedString(stream);
-		else
+		else{
 			continue;
+		}
 		fsize=F_Read_CompressedInt(stream);
 		checksum=F_Read_CompressedInt(stream);
 		offset=F_Read_Offset(stream,header);
@@ -1472,7 +1442,8 @@ ErrorCode		_WZLib_Directory_Parse(WZLib_Directory* dir,FILE* stream,WZLib_Header
 			co=ftell(stream);
 			fseek(stream,offset,SEEK_SET);
 			newDir->parentFile=dir->parentFile;
-			_WZLib_Directory_Parse(newDir,stream,header);
+			if(_WZLib_Directory_Parse(newDir,stream,header)!=WZLib_Error_NoError)
+				return WZLib_Error_Directory_Parse_Error1;
 			fseek(stream,co,SEEK_SET);
 		}else{
 			WZLib_Image* newImg=malloc(sizeof(WZLib_Image));
@@ -1489,6 +1460,8 @@ ErrorCode		_WZLib_Directory_Parse(WZLib_Directory* dir,FILE* stream,WZLib_Header
 			newImg->parentFile=dir->parentFile;
 		}
 		free(name);
+		if(feof(stream)!=0)
+			return WZLib_Error_Directory_Parse_Error1;
 	}
 	dir->inh.parsed=1;
 	return WZLib_Error_NoError;
