@@ -72,6 +72,7 @@ typedef enum _enum_ErrorCode{
 	WZLib_Error_NoError=0,
 	WZLib_Error_File_Parse_BadFileName,
 	WZLib_Error_Image_Parse_Error1,
+	WZLib_Error_Directory_Parse_Error1,
 }ErrorCode;
 
 const char* WZLib_GetError();
