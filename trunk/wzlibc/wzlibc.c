@@ -717,12 +717,11 @@ void WZLib_PNGProperty_Unparse(WZLib_PNGProperty* png){
 #	ifdef WZLIB_HAVE_SDL
 	SDL_FreeSurface(png->png);
 #	endif
-	if(png->_compBytes!=NULL)
+	/*if(png->_compBytes!=NULL)
 		free(png->_compBytes);
 	if(png->_decBytes!=NULL)
 		free(png->_decBytes);
-	png->_compBytes=png->_decBytes=NULL;
-	WZLIB_OBJECT(png)->parsed=0;
+	png->_compBytes=png->_decBytes=NULL;//*/
 	png->pngParsed=0;
 }
 void WZLib_PNGProperty_DisplayFormatAlpha(WZLib_PNGProperty* pngProp){
@@ -738,7 +737,8 @@ void WZLib_PNGProperty_DisplayFormatAlpha(WZLib_PNGProperty* pngProp){
 ErrorCode WZLib_PNGProperty_Parse(WZLib_PNGProperty* png){
 	unsigned char* decBuf=NULL;
 	int decLen=0;
-	switch(png->_format+png->_format2){
+	if(png->_decBytes==NULL){
+		switch(png->_format+png->_format2){
 		case 1:
 		case 2:
 		case 517:
@@ -747,33 +747,38 @@ ErrorCode WZLib_PNGProperty_Parse(WZLib_PNGProperty* png){
 		case 513:
 			decLen=(16/8)*png->width*png->height;
 			break;
-	}
-	if(png->_compBytes[0]==0x78 && png->_compBytes[1]==0x9c)
-		_z_decompress_unknown(png->_compBytes,png->_length,&decBuf,&decLen);
-	else{
-		int blocksize=0;
-		int eop=png->_length;
-		int loc=0;
-		unsigned char* tempCB=(unsigned char*)malloc(sizeof(unsigned char)*png->_length);
-		int tempCBLoc=0;
-		memset(tempCB,0,sizeof(unsigned char)*png->_length);
-		while(loc<(eop-1)){
-			int i=0;
-			blocksize=0;
-			blocksize+=(png->_compBytes[loc]  <<  0);
-			blocksize+=(png->_compBytes[loc+1]<<  8);
-			blocksize+=(png->_compBytes[loc+2]<< 16);
-			blocksize+=(png->_compBytes[loc+3]<< 24);
-			loc+=4;
-			for(i=0;i<blocksize;i++){
-				tempCB[tempCBLoc]=png->_compBytes[loc]^_WZLib_WZKey[i];
-				loc++;
-				tempCBLoc++;
-			}
 		}
-		_z_decompress_unknown(tempCB,tempCBLoc++,&decBuf,&decLen);
-		free(tempCB);
+		if(png->_compBytes[0]==0x78 && png->_compBytes[1]==0x9c)
+			_z_decompress_unknown(png->_compBytes,png->_length,&decBuf,&decLen);
+		else{
+			int blocksize=0;
+			int eop=png->_length;
+			int loc=0;
+			unsigned char* tempCB=(unsigned char*)malloc(sizeof(unsigned char)*png->_length);
+			int tempCBLoc=0;
+			memset(tempCB,0,sizeof(unsigned char)*png->_length);
+			while(loc<(eop-1)){
+				int i=0;
+				blocksize=0;
+				blocksize+=(png->_compBytes[loc]  <<  0);
+				blocksize+=(png->_compBytes[loc+1]<<  8);
+				blocksize+=(png->_compBytes[loc+2]<< 16);
+				blocksize+=(png->_compBytes[loc+3]<< 24);
+				loc+=4;
+				for(i=0;i<blocksize;i++){
+					tempCB[tempCBLoc]=png->_compBytes[loc]^_WZLib_WZKey[i];
+					loc++;
+					tempCBLoc++;
+				}
+			}
+			_z_decompress_unknown(tempCB,tempCBLoc++,&decBuf,&decLen);
+			free(tempCB);
+		}
 	}
+	if(decLen==0)
+		decLen=png->_decLen;
+	if(decBuf==NULL)
+		decBuf=png->_decBytes;
 #	ifdef WZLIB_HAVE_SDL
 	{
 		int f=png->_format+png->_format2;
@@ -862,8 +867,10 @@ ErrorCode WZLib_PNGProperty_Parse(WZLib_PNGProperty* png){
 #	endif
 	WZLIB_OBJECT(png)->parsed=1;
 	png->pngParsed=1;
-	png->_decBytes=decBuf;
-	png->_decLen=decLen;
+	if(decBuf!=NULL)
+		png->_decBytes=decBuf;
+	if(decLen!=0)
+		png->_decLen=decLen;
 	return WZLib_Error_NoError;
 }
 
