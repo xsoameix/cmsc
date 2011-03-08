@@ -13,6 +13,7 @@
 
 unsigned int	__WZLIB_OBJECT_ID_COUNTER=0;
 char*			__WZLib_LastError="";
+char* _WZLib_WZKey=_WZLib_DefaultWZKey;
 
 #pragma region Linked List Stuff
 
@@ -458,6 +459,39 @@ char*		WZLib_ObjectType_GetName(WZLib_ObjectType type){
 }
 #pragma endregion
 
+#pragma region WZKey
+int	WZLib_Key_LoadKeyFromFile(const char* filename){
+	unsigned char* buf=NULL;
+	FILE* f=fopen(filename,"rb");
+	int ret=0;
+	unsigned int l=0;
+	if(f==NULL)
+		return 1;
+	fseek(f,0,SEEK_END);
+	l=ftell(f);
+	fseek(f,0,SEEK_SET);
+	if(l!=65535)
+		return 2;
+	buf=(unsigned char*)malloc(sizeof(unsigned char)*l);
+	fread(buf,sizeof(unsigned char),l,f);
+	fclose(f);
+	ret=WZLib_Key_SetKey(buf,l);
+	free(buf);
+	return ret;
+}
+int	WZLib_Key_SetKey(unsigned char* buffer,unsigned int length){
+	if(length!=65535)
+		return-1;
+	if(_WZLib_WZKey!=_WZLib_DefaultWZKey){
+		free(_WZLib_WZKey);
+		_WZLib_WZKey=NULL;
+	}
+	_WZLib_WZKey=(unsigned char*)malloc(sizeof(unsigned char)*length);
+	memcpy(_WZLib_WZKey,buffer,sizeof(unsigned char)*length);
+	return 0;
+}
+#pragma endregion
+
 #pragma region WZLib_Object and Generics
 
 int	_WZLib_Object_Init(WZLib_Object* obj,const char* name,WZLib_ObjectType type){
@@ -715,7 +749,9 @@ void WZLib_PNGProperty_Unparse(WZLib_PNGProperty* png){
 	if(!WZLIB_OBJECT(png)->parsed)
 		return;
 #	ifdef WZLIB_HAVE_SDL
-	SDL_FreeSurface(png->png);
+	if(png->png!=NULL)
+		SDL_FreeSurface(png->png);
+	png->png=NULL;
 #	endif
 	/*if(png->_compBytes!=NULL)
 		free(png->_compBytes);

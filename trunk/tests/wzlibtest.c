@@ -2,7 +2,7 @@
 
 #include "wzlibc.h"
 
-#include "SDL.h"
+#include "SDL/SDL.h"
 #include "SDL/SDL_mixer.h"
 
 #ifndef _WIN32
@@ -16,6 +16,7 @@ int max(int x,int y){
 void play(WZLib_Object* obj);
 
 void quitSDL(){
+	//Mix_Quit();
 	SDL_Quit();
 }
 
@@ -96,6 +97,7 @@ int interpret(const char* cmd){
 		return 0;
 	}
 	if(INM(tokens[0],"quit")){
+		interpret("c");
 		printf("Cya.\n");
 		return 1;
 	}
@@ -128,12 +130,14 @@ int interpret(const char* cmd){
 		currentObj->name=getFileName(tokens[1]);
 		currentFile=currentObj;
 		WZLib_File_Parse((WZLib_File*)currentObj);
-		printf("opened %s, v%d, %d bytes, (%s)\n",currentObj->name,WZLIB_FILE(currentObj)->_fileVersion,WZLIB_FILE(currentObj)->_header->fileSize,WZLIB_FILE(currentObj)->_header->copyright);
+		printf("opened %s, v%d, %d bytes, ",currentObj->name,WZLIB_FILE(currentObj)->_fileVersion,WZLIB_FILE(currentObj)->_header->fileSize);
+		printf("(%s)\n",WZLIB_FILE(currentObj)->_header->copyright);
 		currentObj=WZLIB_FILE(currentObj)->_wzDir;
 	}
 	if(INM(tokens[0],"close")){
 		if(currentFile==NULL)
 			INE("close","already closed");
+		printf("closing %s\n",WZLIB_OBJECT(currentFile)->name);
 		WZLib_File_Close(WZLIB_FILE(currentFile));
 		currentObj=NULL;
 		currentFile=NULL;
@@ -192,6 +196,12 @@ int interpret(const char* cmd){
 			WZLib_Image_ResolveUOLs((WZLib_Image*)currentObj);
 		}
 	}
+	if(INM(tokens[0],"keyset")){
+		int ret=0;
+		INA("keyset",numTokens,2);
+		if((ret=WZLib_Key_LoadKeyFromFile(tokens[1]))!=0)
+			INE("keyset","error loading key from file");
+	}
 	if(INM(tokens[0],"up")){
 		if(currentObj==NULL)
 			INE("up","currentObj is NULL");
@@ -206,7 +216,7 @@ int interpret(const char* cmd){
 			currentObj=currentObj->parent;
 			return 0;
 		}
-		if(currentObj->parent->type==WZLib_ObjectType_Directory){
+		if(currentObj->parent->type==WZLib_ObjectType_Directory && 1==0){
 			currentObj=currentObj->parent;
 			return 0;
 		}
@@ -214,6 +224,22 @@ int interpret(const char* cmd){
 	if(INM(tokens[0],"eval")){
 		INA("eval",numTokens,2);
 		system(tokens[1]);
+	}
+	if(INM(tokens[0],"memtest")){
+		WZLib_Object* obj=NULL;
+		WZLib_Image* img=NULL;
+		INA("memtest",numTokens,2);
+		if(currentObj==NULL || ((obj=WZLib_Object_Get_n(currentObj,tokens[1]))==NULL))
+			INE("memtest","fail");
+		img=(WZLib_Image*)obj;
+		{
+			int i=0,l=30;
+			for(;i<l;i++){
+				printf("%d of %d\n",i+1,l);
+				WZLib_Image_Parse(img);
+				WZLib_Image_Unparse(img);
+			}
+		}
 	}
 	if(INM(tokens[0],"show")){
 		WZLib_Object* obj=NULL;
@@ -266,6 +292,7 @@ void printInh(WZLib_Object* obj){
 	char* res=(char*)malloc(sizeof(char)*2000);/*large size is lulz*/
 	WZLib_Object** inh=(WZLib_Object**)malloc(sizeof(WZLib_Object*)*100);/*large size is lulz*/
 	int inhLength=0;
+	WZLib_Object* oobj=obj;
 	/*prints parents all the way up to NULL*/
 	memset(res,0,sizeof(char)*2000);
 	memset(inh,0,sizeof(WZLib_Object*)*100);
@@ -287,7 +314,7 @@ void printInh(WZLib_Object* obj){
 		/*drop last ::*/
 		res[strlen(res)-2]=0;
 	}
-	printf("%s> ",res);
+	printf("%s (%d)> ",res,oobj->objectID);
 	free(res);
 	free(inh);
 }
@@ -295,11 +322,6 @@ void printInh(WZLib_Object* obj){
 int main(int argc,char* argv[]){
 	const int inSize=200;
 	char* inStr=(char*)malloc(sizeof(char)*inSize);
-	interpret("o ../../wzs/Skill.wz");
-	while(1){
-		interpret("d 411.img");
-		interpret("u");
-	}
 	while(1){
 		if(currentObj!=NULL)
 			printInh(currentObj);
@@ -424,6 +446,10 @@ void play(WZLib_Object* obj){
 			SDL_BlitSurface(list[i]->png->png,NULL,screen,&br);
 			SDL_Flip(screen);
 		}
+	}
+	for(i=0;i<listIndex;i++){
+		printf("Freeing sprite %d/%d\n",i+1,listIndex);
+		WZLib_PNGProperty_Unparse(list[i]->png);
 	}
 	SDL_Quit();
 }
