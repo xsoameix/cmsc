@@ -15,3 +15,4 @@ Some Operations appear quite a bit:
 ||`Init`||Fills the structure with default values (assumes the memory for this structure has already been set to '\0').||
 ||`Parse`||Reads the structure info from file (if necessary), and makes the structure ready for use.||
 ||`Free` or `Delete`||Frees any memory held by the structure that cannot be directly `free`'d.||
+---
