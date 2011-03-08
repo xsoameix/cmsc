@@ -26,6 +26,9 @@ extern "C"{
 
 struct _struct_WZLib_Key; /*there will only be one of these*/
 
+int	WZLib_Key_LoadKeyFromFile(const char* filename);
+int	WZLib_Key_SetKey(unsigned char* buffer,unsigned int length);
+
 struct _struct_WZLib_Object;
 struct _struct_WZLib_Directory;
 struct _struct_WZLib_File;
