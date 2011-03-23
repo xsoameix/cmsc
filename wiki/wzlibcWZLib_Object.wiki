@@ -29,23 +29,23 @@ typedef struct _struct_WZLib_Object{
 
 = Functions =
 
-==!WZLib_Object_GetSize==
+==WZLib_Object_GetSize==
 *Declaration:*<br>
 `int             WZLib_Object_GetSize(WZLib_Object* obj);`<br><br>
 If this object has children, get the number of children it has.
-==!WZLib_Object_Get_n==
+==WZLib_Object_Get_n==
 *Declaration:*<br>
 `WZLib_Object*   WZLib_Object_Get_n(WZLib_Object* obj,const char* name);`<br><br>
 If this object has children, return the child with the name matching `name` (case sensitive).
-==!WZLib_Object_Get_nv==
+==WZLib_Object_Get_nv==
 *Declaration:*<br>
 `WZLib_Object*   WZLib_Object_Get_nv(WZLib_Object* obj,...);`<br><br>
 If this object has children, crawl down the inheritance list by repeated application of `WZLib_Object_Get_n`.  Uses varargs; when your list of children is done, terminate with either a `""` or a `NULL`.  If there is a discontinuity anywhere down the chain, this function will return NULL.
-==!WZLib_Object_Get_i==
+==WZLib_Object_Get_i==
 *Declaration:*<br>
 `WZLib_Object*   WZLib_Object_Get_i(WZLib_Object* obj,int index);`<br><br>
 If this object has children, return the `index`'th child.
-==!WZLib_Object_Get_iv==
+==WZLib_Object_Get_iv==
 *Declaration:*<br>
 `WZLib_Object*   WZLib_Object_Get_iv(WZLib_Object* obj,...);`<br><br>
 If this object has children, crawl down the inheritance list by repeated application of `WZLib_Object_Get_i`.  Uses varargs, when your list of children is done, terminate with a `-1`.  If there is a discontinuity anywhere down the chain, this function will return NULL.
