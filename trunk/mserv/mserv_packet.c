@@ -126,12 +126,22 @@ int		MServ_Packet_Recv(MServ_Packet* p,PRFileDesc* socket){
 	PRErrorCode err=0;
 	int ret=0;
 	do{
-		ret=PR_Recv(socket,p->buf,1024,0,PR_MillisecondsToInterval(10));
+		ret=PR_Recv(socket,p->buf->buffer,1024,0,PR_MillisecondsToInterval(10));
 	}while(ret<=0 && (err=PR_GetError())==PR_WOULD_BLOCK_ERROR);
+	p->buf->size+=ret;
 	return ret;
 }
 
 void MServ_Packet_Reset(MServ_Packet* p){
 	p->buf->writeIndex=0;
 	p->buf->size=0;
+}
+
+unsigned int		MServ_Packet_GetLength	(MServ_Packet* p){
+	byte* buf=zalloc(4);
+	int ret=0;
+	mread(buf,sizeof(byte),4,p->buf);
+	ret=((buf[0]+buf[1]*0x100)^(buf[2]+buf[3]*0x100));
+	free(buf);
+	return ret;
 }
