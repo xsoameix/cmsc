@@ -52,7 +52,6 @@ unsigned int	MServ_Packet_vWritefvp(MServ_Packet* p,const char* format,va_list a
 	int flen=strlen(format);
 	int i=0;
 	unsigned int ret=0;
-	va_start(ap,format);
 	for(i=0;i<flen;i++){
 		if(format[i]=='%'){
 			char type=format[++i];
@@ -83,6 +82,7 @@ unsigned int	MServ_Packet_vWritefvv(MServ_Packet* p,const char* format,va_list a
 	int flen=strlen(format);
 	int i=0;
 	unsigned int ret=0;
+	byte* tempB=zalloc(10);
 	for(i=0;i<flen;i++){
 		if(format[i]=='%'){
 			char type=format[++i];
@@ -91,22 +91,25 @@ unsigned int	MServ_Packet_vWritefvv(MServ_Packet* p,const char* format,va_list a
 			switch(type){
 				case 'c':
 					numBytes=1;
-					data=&(va_arg(ap,byte));
+					(*tempB)=(va_arg(ap,int));
 					break;
 				case 'h':
 					numBytes=2;
-					data=&(va_arg(ap,short));
+					(*tempB)=(va_arg(ap,int));
 					break;
 				case 'd':
 					numBytes=4;
-					data=&(va_arg(ap,int));
+					(*tempB)=(va_arg(ap,int));
 					break;
 				case 'b':
 					data=(va_arg(ap,byte*));
 					numBytes=va_arg(ap,int);
 					break;
 			}
+			if(data==NULL)
+				data=tempB;
 			MServ_Packet_Write(data,sizeof(byte),numBytes,p);
+			memset(tempB,'\0',10);
 			ret++;
 		}
 	}
