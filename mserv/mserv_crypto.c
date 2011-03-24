@@ -61,7 +61,6 @@ void MServ_Crypto_Shuffle(MServ_Crypto* cr,int shuffleIndex){
 			cr->sendIV=iv;
 			break;
 	}
-	return 0;
 }
 
 /*---------------shuffle key-----------------*/
