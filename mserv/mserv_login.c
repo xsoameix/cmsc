@@ -55,6 +55,20 @@ void	MServ_Login_NewClient(void* sock){
 	printf("\n");
 	{//send connect?
 		MServ_Packet* p=MServ_Packet_New();
+		short opcode=0xd;
+		short version=40;
+		unsigned int recvIV=1;
+		unsigned int sendIV=2;
+		unsigned char locale=5;
+		unsigned short strLen=0;
+		MServ_Packet_Writefv(p,"%h%h%h%d%d%c",&opcode,&version,&strLen,&recvIV,&sendIV,&locale);
+		MServ_Packet_Send(p,s);
+		/*
+		Opcode - 0xD
+		Version - 40
+		Recv, Send - unused but send anyway
+		locale - 5
+		*/
 	}
 	PR_Close(s);
 }
