@@ -18,5 +18,6 @@ typedef struct _struct_MServ_Connection{
 MServ_Connection*		MServ_Connection_New	();
 void					MServ_Connection_Free	(MServ_Connection* con);
 unsigned int			MServ_Connection_Sendvv	(MServ_Connection* con,const char* format,...);
+unsigned int			MServ_Connection_Recv	(MServ_Connection* con);
 
 #endif

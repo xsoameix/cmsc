@@ -33,6 +33,7 @@ PRStatus			MServ_Packet_Send		(MServ_Packet* p,PRFileDesc* socket);
 //blocks
 int					MServ_Packet_Recv		(MServ_Packet* p,PRFileDesc* socket);
 void				MServ_Packet_Reset		(MServ_Packet* p);
+unsigned int		MServ_Packet_GetLength	(MServ_Packet* p);
 
 /*---Packet Definitions---*/
 #define				MSERV_PACKET_DEF_HELLO_FORMAT	"opcode:%h version:%h patchLocationStr:%h recvIV:%d sendIV:%d locale:%c"

@@ -60,5 +60,12 @@ void	MServ_Login_NewClient(void* sock){
 	{
 		MServ_Connection_Sendvv(con,MSERV_PACKET_DEF_HELLO_FORMAT,MSERV_PACKET_DEF_HELLO_OPCODE,40,0,con->crypto->recvIV,con->crypto->sendIV,5);
 	}
+	MServ_Connection_Recv(con);
+	{
+		FILE* pf=fopen("pkt.txt","wb");
+		fwrite(con->packet->buf->buffer,sizeof(byte),con->packet->buf->size,pf);
+		fclose(pf);
+	}
+	printf("packet recvd\n");
 	PR_Close(s);
 }
