@@ -3,6 +3,8 @@
 
 #include <stdlib.h>
 
+typedef unsigned char byte;
+
 typedef struct _struct_MServ_Config{
 	int	loginPort;
 }MServ_Config;

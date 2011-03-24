@@ -5,6 +5,7 @@
 #include <prio.h>
 
 typedef struct _struct_LoginServer_Data{
+	PRFileDesc*		socket;
 }LoginServer_Data;
 
 void	MServ_Login_Start	();
