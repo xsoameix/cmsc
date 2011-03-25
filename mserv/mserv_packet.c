@@ -1,5 +1,6 @@
 #include "mserv_packet.h"
 
+#include <stdio.h>
 #include <math.h>
 #include <string.h>
 
@@ -126,8 +127,8 @@ int		MServ_Packet_Recv(MServ_Packet* p,PRFileDesc* socket){
 	PRErrorCode err=0;
 	int ret=0;
 	do{
-		ret=PR_Recv(socket,p->buf->buffer,1024,0,PR_MillisecondsToInterval(10));
-	}while(ret<=0 && (err=PR_GetError())==PR_WOULD_BLOCK_ERROR);
+		ret=PR_Recv(socket,p->buf->buffer,1024,0,PR_MillisecondsToInterval(100));
+	}while(ret<=0 && ((err=PR_GetError())==PR_WOULD_BLOCK_ERROR || err==PR_IO_TIMEOUT_ERROR));
 	p->buf->size+=ret;
 	return ret;
 }

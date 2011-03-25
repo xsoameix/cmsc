@@ -36,7 +36,7 @@ void	MServ_Login_Listen(void* data){
 			void* ret=NULL;
 			printf("Connection request, spinning off thread.\n");
 			ret=PR_CreateThread(PR_USER_THREAD,MServ_Login_NewClient,(void*)newSock,PR_PRIORITY_NORMAL,PR_GLOBAL_THREAD,PR_JOINABLE_THREAD,0);
-			printf("Thread out %d\n",ret);
+			printf("Thread out %#08x\n",ret);
 		}
 		PR_Sleep(PR_MillisecondsToInterval(1));
 	}
