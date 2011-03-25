@@ -1,5 +1,7 @@
 #include "mserv_crypto.h"
 
+#include "mserv_packet.h"
+
 byte __MServ_Crypto_ShuffleKey[];
 
 MServ_Crypto*	MServ_Crypto_New(){
@@ -60,6 +62,63 @@ void MServ_Crypto_Shuffle(MServ_Crypto* cr,int shuffleIndex){
 		case MSERV_CRYPTO_SHUFFLE_SEND:
 			cr->sendIV=iv;
 			break;
+	}
+}
+
+byte		_rol(byte val,int num){
+	int highbit,i;
+	for(i=0;i<num;i++){
+		highbit=((val&0x80)!=0?1:0);
+		val<<=1;
+		val|=(byte)highbit;
+	}
+	return val;
+}
+byte		_ror(byte val,int num)
+{
+	int lowbit,i;
+	for(i=0;i<num;i++){
+		lowbit=((val&1)!=0?1:0);
+		val>>=1;
+		val|=(byte)(lowbit<<7);
+	}
+	return val;
+}
+MServ_Packet*	MServ_Crypto_DecryptPacket	(MServ_Crypto* cr,MServ_Packet* p){
+	//decrypt in place
+	//shamelessly copied from haha
+	byte* data=p->buf->buffer+2;
+	unsigned int size=p->buf->size-2;
+	byte a,b,c;
+	int i,j;
+	for(i=0;i<3;i++){
+		a=0;
+		b=0;
+		for(j=size;j>0;j--){
+			c=data[j-1];
+			c=_rol(c,3);
+			c^=0x13;
+			a=c;
+			c^=b;
+			c=(byte)(c-j);
+			c=_ror(c,4);
+			b=a;
+			data[j-1]=c;
+		}
+		a=0;
+		b=0;
+		for(j=size;j>0;j--){
+			c=data[size-j];
+			c-=0x48;
+			c^=0xFF;
+			c=_rol(c,j);
+			a=c;
+			c^=b;
+			c=(byte)(c-j);
+			c=_ror(c,3);
+			b=a;
+			data[size-j]=c;
+		}
 	}
 }
 
