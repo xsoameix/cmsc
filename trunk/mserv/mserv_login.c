@@ -30,6 +30,7 @@ void	MServ_Login_Listen(void* data){
 	}
 	PR_Bind(socket,&addr);
 	PR_Listen(socket,10);
+	__loginData.socket=socket;
 	while(1==1){
 		PRFileDesc* newSock=PR_Accept(socket,NULL,10);
 		if(newSock!=NULL){
@@ -60,11 +61,25 @@ void	MServ_Login_NewClient(void* sock){
 	{
 		MServ_Connection_Sendvv(con,MSERV_PACKET_DEF_HELLO_FORMAT,MSERV_PACKET_DEF_HELLO_OPCODE,40,0,con->crypto->recvIV,con->crypto->sendIV,5);
 	}
-	MServ_Connection_Recv(con);
+	MServ_Packet_Recv(con->packet,con->socket);
 	{
-		FILE* pf=fopen("pkt.txt","wb");
-		fwrite(con->packet->buf->buffer,sizeof(byte),con->packet->buf->size,pf);
-		fclose(pf);
+		FILE* preFP=fopen("pre_pkt.txt","wb");
+		if(preFP==NULL)
+			printf("can't open pre_pkt.txt\n");
+		else{
+			fwrite(con->packet->buf->buffer,sizeof(byte),con->packet->buf->size,preFP);
+			fclose(preFP);
+		}
+	}
+	MServ_Crypto_DecryptPacket(con->crypto,con->packet);
+	{
+		FILE* postFP=fopen("post_pkt.txt","wb");
+		if(postFP==NULL)
+			printf("can't open post_pkt.txt\n");
+		else{
+			fwrite(con->packet->buf->buffer,sizeof(byte),con->packet->buf->size,postFP);
+			fclose(postFP);
+		}
 	}
 	printf("packet recvd\n");
 	PR_Close(s);

@@ -126,10 +126,11 @@ int		MServ_Packet_Recv(MServ_Packet* p,PRFileDesc* socket){
 	PRStatus st=PR_SUCCESS;
 	PRErrorCode err=0;
 	int ret=0;
+	mcap(p->buf,MSERV_PACKET_MAXBUFFERSIZE);
 	do{
-		ret=PR_Recv(socket,p->buf->buffer,1024,0,PR_MillisecondsToInterval(100));
+		ret=PR_Recv(socket,p->buf->buffer,MSERV_PACKET_MAXBUFFERSIZE,0,PR_MillisecondsToInterval(100));
 	}while(ret<=0 && ((err=PR_GetError())==PR_WOULD_BLOCK_ERROR || err==PR_IO_TIMEOUT_ERROR));
-	p->buf->size+=ret;
+	p->buf->size=ret;
 	return ret;
 }
 

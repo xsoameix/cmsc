@@ -10,6 +10,8 @@
 
 #include "mserv_crypto.h"
 
+#define	MSERV_PACKET_MAXBUFFERSIZE	65535
+
 typedef struct _struct_MServ_Packet{
 	MEMFILE*		buf;
 }MServ_Packet; //I guess this is more a packet sending/receiving class :-P
