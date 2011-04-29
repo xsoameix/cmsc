@@ -4,9 +4,9 @@
 
 #include <prio.h>
 
-typedef struct _struct_LoginServer_Data{
+struct _struct_LoginServer_Data{
 	PRFileDesc*		socket;
-}LoginServer_Data;
+}__loginData;
 
 void	MServ_Login_Start	();
 void	MServ_Login_Listen	(void* data);
