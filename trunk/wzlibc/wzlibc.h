@@ -8,11 +8,25 @@ extern "C"{
 #include <stdlib.h>
 #include <stdio.h>
 
-#define WZLIB_HAVE_SDL
+//#define WZLIB_HAVE_SDL
+#define WZLIB_HAVE_OPENGL
+
+#ifdef WZLIB_HAVE_SDL
+#ifdef WZLIB_HAVE_OPENGL
+#error WHOA ONRY ONE A TIME PL0X
+#endif
+#endif
 
 #ifdef WZLIB_HAVE_SDL
 #include "SDL/SDL.h"
 #include "SDL/SDL_mixer.h"
+#endif
+
+#ifdef WZLIB_HAVE_OPENGL
+#ifdef WIN32
+#include <Windows.h>
+#endif
+#include "gl/GL.h"
 #endif
 
 /*some macros for typecasting*/
@@ -198,9 +212,16 @@ typedef struct _struct_WZLib_PNGProperty{
 	unsigned char*			_compBytes;
 	int				_decLen;
 	unsigned char*			_decBytes;
+	unsigned char*			_pixels;
+	unsigned int			_pixelsLen;
 	FILE*				_stream;
 #	ifdef WZLIB_HAVE_SDL
 	SDL_Surface*			png;
+#	endif
+#	ifdef WZLIB_HAVE_OPENGL
+	GLuint			texture;
+	int				texWidth;
+	int				texHeight;
 #	endif
 }WZLib_PNGProperty;
 

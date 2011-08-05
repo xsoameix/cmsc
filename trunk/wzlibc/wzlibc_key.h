@@ -1,6 +1,6 @@
 #ifndef __WZLIB_C_KEY_H
 #define __WZLIB_C_KEY_H
-const unsigned char _WZLib_WZKey[] = 
+const unsigned char _WZLib_DefaultWZKey[] = 
 {
 0x96,
 0xAE,

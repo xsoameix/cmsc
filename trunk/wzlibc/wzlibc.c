@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -9,11 +10,17 @@
 #include "wzlibc_key.h"
 #include "zlib.h"
 
+#ifndef WZLIB_HAVE_SDL
+#ifndef WZLIB_HAVE_OPENGL
+#define WZLIB_HAVE_NO_GRAPHICS
+#endif
+#endif
+
 #define WZPP(prop) WZLIB_PRIMITIVEPROPERTY(prop)
 
 unsigned int	__WZLIB_OBJECT_ID_COUNTER=0;
 char*			__WZLib_LastError="";
-char* _WZLib_WZKey=_WZLib_DefaultWZKey;
+unsigned char* _WZLib_WZKey=(unsigned char*)_WZLib_DefaultWZKey;
 
 #pragma region Linked List Stuff
 
@@ -759,6 +766,14 @@ void WZLib_PNGProperty_Unparse(WZLib_PNGProperty* png){
 		free(png->_decBytes);
 	png->_compBytes=png->_decBytes=NULL;//*/
 	png->pngParsed=0;
+	if(png->_pixels!=NULL){
+		free(png->_pixels);
+		png->_pixels=NULL;
+		png->_pixelsLen=0;
+	}
+#	ifdef WZLIB_HAVE_OPENGL
+	glDeleteTextures(1,&(png->texture));
+#	endif
 }
 void WZLib_PNGProperty_DisplayFormatAlpha(WZLib_PNGProperty* pngProp){
 #	ifdef WZLIB_HAVE_SDL
@@ -773,6 +788,15 @@ void WZLib_PNGProperty_DisplayFormatAlpha(WZLib_PNGProperty* pngProp){
 ErrorCode WZLib_PNGProperty_Parse(WZLib_PNGProperty* png){
 	unsigned char* decBuf=NULL;
 	int decLen=0;
+	int f=png->_format+png->_format2;
+	int h=png->height;int w=png->width;
+	h=pow(2,ceil(log((float)h)/log(2.0f)));
+	w=pow(2,ceil(log((float)w)/log(2.0f)));
+	if(png->_pixels!=NULL){
+		free(png->_pixels);
+		png->_pixels=NULL;
+		png->_pixelsLen=0;
+	}
 	if(png->_decBytes==NULL){
 		switch(png->_format+png->_format2){
 		case 1:
@@ -815,6 +839,77 @@ ErrorCode WZLib_PNGProperty_Parse(WZLib_PNGProperty* png){
 		decLen=png->_decLen;
 	if(decBuf==NULL)
 		decBuf=png->_decBytes;
+#	ifdef WZLIB_HAVE_OPENGL || WZLIB_HAVE_NO_GRAPHICS
+	switch(f){
+	case 1:
+		{
+			int x,y,k;
+			int r,g,b,a;
+			png->_pixelsLen=w*h*32/sizeof(int);
+			png->_pixels=(unsigned char*)_zalloc(sizeof(unsigned char)*(png->_pixelsLen));
+			for(k=0,x=0,y=0;k<decLen;k+=2){
+				if(x==png->width){
+					x=0;
+					y++;
+					if(y==png->height)
+						break;
+				}
+				b=decBuf[k] & 15;
+				b|=b<<4;
+				g=decBuf[k] & 240;
+				g|=g>>4;
+				r=decBuf[k+1] & 15;
+				r|=r<<4;
+				a=decBuf[k+1] & 240;
+				a|=a>>4;
+				//printf("(%d,%d): %d|%d|%d|%d\n",x,y,r,g,b,a);
+				//((unsigned int*)png->_pixels)[y*w+x]=r<<24|b<<16|g<<8|a;
+				((unsigned int*)png->_pixels)[y*w+x]=a<<24|b<<16|g<<8|r;
+				//*((unsigned int*)png->_pixels+y*32/4+x)=a<<24|b<<16|g<<8|r<<0;
+				x++;
+			}
+		}
+		break;
+	case 2:
+		{
+			png->_pixelsLen=w*h*32/sizeof(int);
+			png->_pixels=(unsigned char*)_zalloc(sizeof(unsigned char)*(png->_pixelsLen));
+			memcpy(png->_pixels,decBuf,decLen);
+		}
+		break;
+	case 513:
+		{
+			png->_pixelsLen=w*h*32/sizeof(int);
+			png->_pixels=(unsigned char*)_zalloc(sizeof(unsigned char)*(png->_pixelsLen));
+			memcpy(png->_pixels,decBuf,decLen);
+		}
+		break;
+	case 517:
+		{/*//Map.wz -> Back -> midForest -> back -> 0.png*/
+			png->_pixelsLen=w*h*32/sizeof(int);
+			png->_pixels=(unsigned char*)_zalloc(sizeof(unsigned char)*(png->_pixelsLen));
+			{
+				int x=0;int y=0;int i=0;unsigned char j=0;int k=0;
+				for(i=0;i<decLen;i++){
+					for(j=0;j<8;j++){
+						unsigned char iB=((decBuf[i] & (0x01 << (7 - j))) >> (7 - j)) * 0xFF;
+						for(k=0;k<16;k++){
+							if(x==png->width){
+								x=0;y++;
+							}
+							*((unsigned int*)png->_pixels+y*32/4+x)=iB<<24|iB<<16|iB<<8|iB;//*((unsigned int*)png->png->pixels+y*png->png->pitch/4+x);
+							x++;
+						}
+					}
+				}
+			}
+		}
+		break;
+	default:
+		/*nao what?*/
+		break;
+	}
+#	endif
 #	ifdef WZLIB_HAVE_SDL
 	{
 		int f=png->_format+png->_format2;
@@ -907,6 +1002,24 @@ ErrorCode WZLib_PNGProperty_Parse(WZLib_PNGProperty* png){
 		png->_decBytes=decBuf;
 	if(decLen!=0)
 		png->_decLen=decLen;
+#	ifdef WZLIB_HAVE_OPENGL
+	{
+		GLuint oldtex=0;
+		glGetIntegerv(GL_TEXTURE_BINDING_2D,(GLint*)&oldtex);
+		if(png->texture!=0)
+			glDeleteTextures(1,&(png->texture));
+		glGenTextures(1,&(png->texture));
+		glBindTexture(GL_TEXTURE_2D,png->texture);
+		glTexImage2D(GL_TEXTURE_2D,0,4,w,h,0,GL_RGBA,GL_UNSIGNED_BYTE,png->_pixels);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
+		glBindTexture(GL_TEXTURE_2D,oldtex);
+		png->texHeight=h;
+		png->texWidth=w;
+	}
+#	endif
 	return WZLib_Error_NoError;
 }
 
